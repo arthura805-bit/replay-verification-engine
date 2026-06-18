@@ -10,7 +10,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from replay_verify import output_hash, verify  # noqa: E402
+from replay_verify import EventRecord, output_hash, verify  # noqa: E402
 
 EVENTS = [
     {"op": "set", "key": "a", "value": 1},
@@ -50,6 +50,11 @@ def test_report_contains_pass_and_fail():
     assert "FAIL" in str(bad)
 
 
+def test_eventrecord_matches_dict_form():
+    typed = [EventRecord.from_dict(e) for e in EVENTS]
+    assert output_hash(typed) == output_hash(EVENTS)
+
+
 def _run_standalone() -> int:
     failures = 0
     for fn in (
@@ -57,6 +62,7 @@ def _run_standalone() -> int:
         test_event_order_matters,
         test_modified_event_fails_verification,
         test_report_contains_pass_and_fail,
+        test_eventrecord_matches_dict_form,
     ):
         try:
             fn()

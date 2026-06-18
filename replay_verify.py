@@ -27,13 +27,40 @@ def canonical(obj: Any) -> bytes:
     ).encode("utf-8")
 
 
-def apply_event(state: dict[str, Any], event: dict[str, Any]) -> dict[str, Any]:
+@dataclass(frozen=True)
+class EventRecord:
+    """A typed event. Equivalent to the dict form used throughout the demo."""
+
+    op: str
+    key: str
+    value: Any = None
+    by: int = 0
+
+    def as_dict(self) -> dict[str, Any]:
+        d: dict[str, Any] = {"op": self.op, "key": self.key}
+        if self.op == "set":
+            d["value"] = self.value
+        elif self.op == "inc":
+            d["by"] = self.by
+        return d
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> "EventRecord":
+        return cls(op=d["op"], key=d["key"], value=d.get("value"), by=d.get("by", 0))
+
+
+def _as_event_dict(event: Any) -> dict[str, Any]:
+    return event.as_dict() if isinstance(event, EventRecord) else event
+
+
+def apply_event(state: dict[str, Any], event: dict[str, Any] | EventRecord) -> dict[str, Any]:
     """Pure update function — returns a new state, never mutates the input.
 
-    Event kinds (deliberately simple and deterministic):
+    Accepts either a plain dict or an :class:`EventRecord`. Event kinds:
       * {"op": "set", "key": k, "value": v}
       * {"op": "inc", "key": k, "by": n}
     """
+    event = _as_event_dict(event)
     new = dict(state)
     op, key = event["op"], event["key"]
     if op == "set":
